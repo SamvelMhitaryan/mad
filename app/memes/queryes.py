@@ -1,44 +1,56 @@
+from fastapi import UploadFile
 from sqlalchemy import select, update, delete
-from sqlalchemy.orm import Session
-from memes import models, schemas
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.memes import models, schemas
+import aiohttp
 
 
-def get_meme(db: Session, meme_id: int):
+async def upload_file(file: UploadFile):
+    async with aiohttp.ClientSession() as session:
+        url = '<ручка upload во внутреннем сервисе media>'
+        async with session.post(url, data={'file': file.file}) as response:
+            return await response.json()
+
+
+async def get_meme(db: AsyncSession, meme_id: int):
     stmt = select(models.Meme).where(models.Meme.id == meme_id)
-    return db.scalars(stmt).first()
+    return await db.execute(stmt)
 
 
-def get_memes(db: Session, skip: int = 0, limit: int = 10):
+async def get_memes(db: AsyncSession, skip: int = 0, limit: int = 10):
     stmt = select(models.Meme).offset(skip).limit(limit)
-    return db.scalars(stmt).all()
+    return await db.execute(stmt)
 
 
-def create_meme(db: Session, meme: schemas.MemeCreate):
-    db_meme = models.Meme(**meme.model_dump())
+async def create_meme(db: AsyncSession, meme: schemas.MemeCreate, file: UploadFile):
+    upload_response = await upload_file(file)
+    memes_data = meme.model_dump()
+    memes_data['file_id'] = upload_response['id']
+    db_meme = models.Meme(**memes_data)
     db.add(db_meme)
-    db.commit()
-    db.refresh(db_meme)
+    await db.commit()
+    await db.refresh(db_meme)
     return db_meme
 
 
-def update_meme(db: Session, meme_id: int, meme: schemas.MemeCreate):
+async def update_meme(db: AsyncSession, meme_id: int, meme: schemas.MemeCreate):
     stmt = (
         update(models.Meme)
         .where(models.Meme.id == meme_id)
         .values(**meme.model_dump())
         .returning(models.Meme)
     )
-    result = db.execute(stmt)
-    db.commit()
-    return result.scalar_one_or_none()
+    result = await db.execute(stmt)
+    await db.commit()
+    return await result.scalar_one_or_none()
 
 
-def delete_meme(db: Session, meme_id: int):
+async def delete_meme(db: AsyncSession, meme_id: int):
     stmt = (
         delete(models.Meme)
         .where(models.Meme.id == meme_id)
         .returning(models.Meme)
     )
-    result = db.execute(stmt)
-    db.commit()
-    return result.scalar_one_or_none()
+    result = await db.execute(stmt)
+    await db.commit()
+    return await result.scalar_one_or_none()

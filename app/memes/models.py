@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import String
 
-from app.database import Base
+from app.memes.database import Base
 
 
 class Meme(Base):
@@ -9,4 +9,4 @@ class Meme(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(70))
-    image_url = Mapped[str]
+    file_id: Mapped[int] = mapped_column(nullable=False)

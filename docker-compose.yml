@@ -3,40 +3,43 @@ version: "3.7"
 services:
   db:
     image: postgres:13
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: memes
+    env_file:
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   minio:
     image: minio/minio
     command: server /data
-    environment:
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
+    env_file:
+      - .env
     volumes:
       - minio_data:/data
     ports:
       - "9000:9000"
       - "9001:9001"
 
-  memes_service:
-    build: ./memes_service
-    command: uvicorn memes_service.main:app --host 0.0.0.0 --port 8000
+  memes:
+    build: 
+      context: ./
+      dockerfile: Dockerfile
+    # entrypoint: ./script_memes.sh
+    command: uvicorn app.memes.main:memes_app --host 0.0.0.0 --port 8000
     volumes:
-      - ./memes_service:/code
+      - ./memes:/code
     ports:
       - "8000:8000"
     depends_on:
       - db
 
-  media_service:
-    build: ./media_service
-    command: uvicorn media_service.main:app --host 0.0.0.0 --port 8001
+  media:
+    build: 
+      context: ./
+      dockerfile: Dockerfile
+      # entrypoint: ./script_media.sh
+    command: uvicorn app.media.main:media_app --host 0.0.0.0 --port 8001
     volumes:
-      - ./media_service:/code
+      - ./media:/code
     ports:
       - "8001:8001"
     depends_on:

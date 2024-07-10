@@ -1,36 +1,37 @@
-from fastapi import Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import Depends, HTTPException, UploadFile, status, APIRouter
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.memes import queryes
-from memes import schemas
-from app.database import get_db
+from app.memes import schemas
+from app.memes.database import get_db_memes
 from typing import List
-from app.main import app
+
+router = APIRouter()
 
 
-@app.get("/memes", response_model=List[schemas.Meme])
-def read_memes(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    memes = queryes.get_memes(db, skip=skip, limit=limit)
+@router.get("/memes", response_model=List[schemas.Meme])
+async def read_memes(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db_memes)):
+    memes = await queryes.get_memes(db, skip=skip, limit=limit)
     return memes
 
 
-@app.get("/memes/{meme_id}", response_model=schemas.Meme)
-def read_meme(meme_id: int, db: Session = Depends(get_db)):
-    db_meme = queryes.get_meme(db, meme_id=meme_id)
+@router.get("/memes/{meme_id}", response_model=schemas.Meme)
+async def read_meme(meme_id: int, db: AsyncSession = Depends(get_db_memes)):
+    db_meme = await queryes.get_meme(db, meme_id=meme_id)
     if db_meme is None:
         raise HTTPException(status_code=404, detail="Meme not found")
     return db_meme
 
 
-@app.post("/memes", response_model=schemas.Meme, status_code=status.HTTP_201_CREATED)
-def create_meme(meme: schemas.MemeCreate, db: Session = Depends(get_db)):
-    return queryes.create_meme(db=db, meme=meme)
+@router.post("/memes", response_model=schemas.Meme, status_code=status.HTTP_201_CREATED)
+async def create_meme(meme: schemas.MemeCreate, file: UploadFile = Depends(), db: AsyncSession = Depends(get_db_memes)):
+    return await queryes.create_meme(db=db, meme=meme, file=file)
 
 
-@app.put("/memes/{meme_id}", response_model=schemas.Meme)
-def update_meme(meme_id: int, meme: schemas.MemeCreate, db: Session = Depends(get_db)):
-    return queryes.update_meme(db=db, meme_id=meme_id, meme=meme)
+@router.put("/memes/{meme_id}", response_model=schemas.Meme)
+async def update_meme(meme_id: int, meme: schemas.MemeCreate, db: AsyncSession = Depends(get_db_memes)):
+    return await queryes.update_meme(db=db, meme_id=meme_id, meme=meme)
 
 
-@app.delete("/memes/{meme_id}", response_model=schemas.Meme)
-def delete_meme(meme_id: int, db: Session = Depends(get_db)):
-    return queryes.delete_meme(db=db, meme_id=meme_id)
+@router.delete("/memes/{meme_id}", response_model=schemas.Meme)
+async def delete_meme(meme_id: int, db: AsyncSession = Depends(get_db_memes)):
+    return await queryes.delete_meme(db=db, meme_id=meme_id)
